@@ -1,0 +1,145 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#0f8b8d"><title>AW-Med</title><link rel="manifest" href="manifest.json"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+:root{--bg:#f3f7fa;--cd:#fff;--tx:#1b2a3a;--mu:#6b7b8c;--pr:#0f8b8d;--bd:#dde5ec;--dg:#d64545;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0f1720;--cd:#18232f;--tx:#e6edf3;--mu:#8ea0b2;--bd:#2a3948}}
+:root[data-theme=dark]{--bg:#0f1720;--cd:#18232f;--tx:#e6edf3;--mu:#8ea0b2;--bd:#2a3948}
+*{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--tx);font:15px system-ui,Segoe UI,sans-serif;min-height:100vh}
+header{background:var(--pr);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center}
+#top{position:sticky;top:0;z-index:6;box-shadow:0 2px 6px #0002}
+header b{font-size:18px}nav{display:flex;gap:4px;overflow-x:auto;padding:8px;background:var(--cd);border-bottom:1px solid var(--bd)}
+nav a{padding:8px 12px;border-radius:8px;white-space:nowrap;cursor:pointer;color:var(--mu)}nav a.on{background:var(--pr);color:#fff}
+main{padding:14px;max-width:1100px;margin:auto;padding-bottom:60px}
+.card{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:12px}
+.st{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}.st .card{margin:0}.st h2{margin:4px 0 0;color:var(--pr)}
+button{background:var(--pr);color:#fff;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;font:inherit}button.b2{background:var(--bd);color:var(--tx)}button.sm{padding:3px 9px;font-size:12px}button.dg{background:var(--dg)}
+input,select,textarea{width:100%;padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit;margin-top:3px}
+label{display:block;font-size:12px;color:var(--mu)}.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.tb{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}.tb input{flex:1;min-width:140px;margin:0}
+.w{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--bd);white-space:nowrap}th{color:var(--mu);font-size:12px}
+a.l{color:var(--pr);cursor:pointer;margin-right:8px}.m{color:var(--mu)}.it{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px dashed var(--bd)}
+#mo{position:fixed;inset:0;background:#0008;display:none;align-items:flex-start;justify-content:center;overflow:auto;z-index:20;padding:20px 10px}#mo>div{background:var(--cd);border-radius:12px;padding:16px;width:100%;max-width:640px}
+.ra{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}#lg{max-width:360px;margin:12vh auto;text-align:center}#lg input{margin-bottom:8px}
+#ft{position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:12px;padding:6px;background:var(--cd);border-top:1px solid var(--bd);color:var(--mu)}
+#tt{position:fixed;top:60px;right:10px;background:#222;color:#fff;padding:9px 14px;border-radius:8px;display:none;z-index:30}
+.bar{height:14px;background:var(--pr);border-radius:4px;min-width:2px}#pr{display:none}
+@media print{body>*:not(#pr){display:none!important}#pr{display:block;color:#000;background:#fff;padding:20px}#pr table{width:100%}}
+</style></head><body>
+<div id="app"></div><div id="mo"><div id="mb"></div></div><div id="tt"></div><div id="pr"></div>
+<div id="ft">Build by KonbitTech</div>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-app-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-auth-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const L=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}},S=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+let DB=L('kt_db',{}),SET={name:'AW-Med',cur:'HTG',fb:'',...L('kt_set',{})},DIRTY=L('kt_dirty',[]),ME=L('kt_me',null),fb=null,V='dash',CUR=null,Q='';
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const RO=['Admin','Médecin','Réception','Comptable'],ST=['Prévu','Confirmé','Terminé','Annulé'];
+const COLS={
+patients:{t:'Patients',f:[['nom','Nom complet','text',1],['naissance','Naissance','date'],['sexe','Sexe','select',['F','M']],['tel','Téléphone','text'],['adresse','Adresse','text'],['groupe','Groupe sanguin','select',['','A+','A-','B+','B-','AB+','AB-','O+','O-']],['notes','Antécédents / notes','textarea']],show:['nom','tel','sexe','naissance']},
+rdv:{t:'Rendez-vous',f:[['patientId','Patient','ref:patients',1],['docteurId','Docteur','ref:docteurs'],['date','Date & heure','datetime-local',1],['motif','Motif','text'],['statut','Statut','select',ST]],show:['date','patientId','docteurId','motif','statut']},
+suivis:{t:'Suivis',f:[['patientId','Patient','ref:patients',1],['date','Date','date',1],['note','Observation','textarea']],show:['date','patientId','note']},
+traitements:{t:'Traitements',f:[['patientId','Patient','ref:patients',1],['docteurId','Docteur','ref:docteurs'],['medicament','Traitement / médicament','text',1],['posologie','Posologie','text'],['debut','Début','date'],['fin','Fin','date']],show:['patientId','medicament','posologie','debut']},
+services:{t:'Services',f:[['nom','Nom du service','text',1],['prix','Prix','number',1],['description','Description','textarea']],show:['nom','prix','description']},
+docteurs:{t:'Docteurs',f:[['nom','Nom','text',1],['specialite','Spécialité','text'],['tel','Téléphone','text']],show:['nom','specialite','tel']},
+employes:{t:'Employés',f:[['nom','Nom','text',1],['poste','Poste','text'],['tel','Téléphone','text'],['salaire','Salaire','number']],show:['nom','poste','tel','salaire']},
+compta:{t:'Comptabilité',f:[['type','Type','select',['Entrée','Sortie']],['date','Date','date',1],['libelle','Libellé','text',1],['montant','Montant','number',1]],show:['date','type','libelle','montant']},
+recus:{t:'Reçus',f:[],show:[]},
+settings:{t:'Réglages',f:[],show:[]},
+users:{t:'Utilisateurs',f:[['email','Email','email',1],['nom','Nom','text'],['role','Rôle','select',RO],['pw','Mot de passe (mode local)','password']],show:['email','nom','role']}};
+const NAV=[['dash','🏠','Accueil'],['patients','🧑','Patients'],['rdv','📅','Rendez-vous'],['services','💊','Services'],['docteurs','🩺','Docteurs'],['employes','👥','Employés'],['recus','🧾','Reçus'],['compta','💰','Comptabilité'],['rapports','📊','Rapports'],['archives','🗄','Archives'],['users','🔑','Utilisateurs'],['params','⚙','Paramètres']];
+const ACC={Admin:'*',Médecin:['dash','patients','rdv','services'],Réception:['dash','patients','rdv','services','recus'],Comptable:['dash','recus','compta','rapports','services']};
+const rows=c=>(DB[c]||[]).filter(r=>!r.deleted),act=c=>rows(c).filter(r=>!r.arch),M=n=>Number(n||0).toLocaleString('fr-FR')+' '+SET.cur;
+const nm=(c,id)=>{const r=rows(c).find(x=>x.id==id);return r?r.nom||r.email:'—'};
+let FR={};
+const FL={patients:"Date d'enregistrement",services:'Date de création',archives:"Date d'archivage",rdv:'Date du RDV',compta:'Date',recus:'Date du reçu'};
+const dOf=(v,r)=>{if(v=='rdv'||v=='compta'||v=='recus')return(r.date||'').slice(0,10);const t=v=='archives'?r.u:(r.cr||r.u);return t?new Date(t).toLocaleDateString('sv-SE'):''};
+const dfilt=(v,a)=>{const f=FR[v]||{};return f.a||f.b?a.filter(r=>{const d=dOf(v,r);return(!f.a||d>=f.a)&&(!f.b||d<=f.b)}):a};
+function setF(v,k,val){if(!k)FR[v]={};else(FR[v]=FR[v]||{})[k]=val;render()}
+function setP(v,p){const t=new Date(),f=d=>d.toLocaleDateString('sv-SE');let a=f(t),b=a;if(p=='7'){const d=new Date(t);d.setDate(d.getDate()-6);a=f(d)}else if(p=='m')a=f(new Date(t.getFullYear(),t.getMonth(),1));else if(p=='y')a=f(new Date(t.getFullYear(),0,1));FR[v]={a,b};render()}
+const fbar=v=>{const f=FR[v]||{};return`<div class="card" style="padding:10px"><div class="tb" style="margin:0;align-items:end"><label style="flex:1;min-width:130px">${FL[v]} — du<input type="date" value="${f.a||''}" onchange="setF('${v}','a',this.value)"></label><label style="flex:1;min-width:130px">au<input type="date" value="${f.b||''}" onchange="setF('${v}','b',this.value)"></label><button class="b2 sm" onclick="setP('${v}','0')">Aujourd'hui</button><button class="b2 sm" onclick="setP('${v}','7')">7 jours</button><button class="b2 sm" onclick="setP('${v}','m')">Ce mois</button><button class="b2 sm" onclick="setP('${v}','y')">Cette année</button><button class="b2 sm" onclick="setF('${v}')">✕ Tout</button></div></div>`};
+const deny=c=>c=='services'&&ME&&!['Admin','Comptable'].includes(ME.role);
+const toast=m=>{const t=$('#tt');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',3000)};
+/* ---- data + sync ---- */
+function put(c,r){if(!r.id)r.cr=Date.now();r.id=r.id||uid();r.u=Date.now();const a=DB[c]=DB[c]||[],i=a.findIndex(x=>x.id==r.id);i<0?a.push(r):a[i]=r;S('kt_db',DB);push(c,r);return r}
+function push(c,r){if(fb&&navigator.onLine)fb.db.collection('kt_'+c).doc(r.id).set(r).catch(()=>q(c,r.id));else q(c,r.id)}
+function q(c,id){if(!DIRTY.some(d=>d[0]==c&&d[1]==id)){DIRTY.push([c,id]);S('kt_dirty',DIRTY)}}
+function flush(){if(!fb||!navigator.onLine)return;const d=DIRTY;DIRTY=[];S('kt_dirty',[]);d.forEach(([c,id])=>{const r=(DB[c]||[]).find(x=>x.id==id);r&&push(c,r)})}
+function initFb(){try{if(!SET.fb||!window.firebase)return;const cfg=JSON.parse(SET.fb);firebase.apps.length||firebase.initializeApp(cfg);const db=firebase.firestore();db.enablePersistence({synchronizeTabs:true}).catch(()=>{});fb={db,auth:firebase.auth()};
+Object.keys(COLS).forEach(c=>db.collection('kt_'+c).onSnapshot(s=>{let ch=0;s.forEach(d=>{const r=d.data(),a=DB[c]=DB[c]||[],i=a.findIndex(x=>x.id==r.id);if(i<0){a.push(r);ch++}else if((r.u||0)>(a[i].u||0)){a[i]=r;ch++}});if(ch){S('kt_db',DB);ME&&render()}}));
+addEventListener('online',flush);flush()}catch(e){fb=null;toast('Config Firebase invalide')}}
+/* ---- auth ---- */
+async function login(reg){const e=$('#le').value.trim().toLowerCase(),p=$('#lp').value;if(!e||!p)return toast('Email et mot de passe requis');
+try{let us=rows('users');
+if(fb){reg?await fb.auth.createUserWithEmailAndPassword(e,p):await fb.auth.signInWithEmailAndPassword(e,p)}
+else if(reg){if(us.length)return toast("Création réservée à l'admin");put('users',{email:e,nom:e,role:'Admin',pw:btoa(p)})}
+else if(!us.find(x=>x.email==e&&x.pw==btoa(p)))return toast('Identifiants incorrects');
+us=rows('users');let u=us.find(x=>x.email==e);if(!u&&!us.length)u=put('users',{email:e,nom:e,role:'Admin'});
+if(!u)return toast("Compte non autorisé : demandez à l'admin");ME={email:e,role:u.role};S('kt_me',ME);V='dash';render()}catch(x){toast(x.message)}}
+function logout(){ME=null;S('kt_me',null);fb&&fb.auth.signOut();render()}
+/* ---- ui helpers ---- */
+function modal(h){$('#mb').innerHTML=h;$('#mo').style.display='flex'}function closeM(){$('#mo').style.display='none';CUR=null}
+function cell(c,f,r){const t=f[2],v=r[f[0]];if(t.startsWith('ref:'))return esc(nm(t.slice(4),v));if(f[0]=='prix'||f[0]=='montant'||f[0]=='salaire')return M(v);if(t=='datetime-local')return esc((v||'').replace('T',' '));if(t=='password')return'';return esc(v)}
+function openForm(c,r={},pre={}){if(deny(c))return toast("Réservé à l'admin et au comptable");const o={...pre,...r};modal(`<h3>${r.id?'Modifier':'Nouveau'} · ${COLS[c].t}</h3><div class="g">`+COLS[c].f.map(([k,l,t,x])=>{const v=o[k]??'';let i;
+if(t=='select')i=`<select id="f_${k}">${x.map(a=>`<option ${a==v?'selected':''}>${esc(a)}</option>`).join('')}</select>`;
+else if(t.startsWith('ref:'))i=`<select id="f_${k}"><option value="">—</option>${act(t.slice(4)).map(a=>`<option value="${a.id}" ${a.id==v?'selected':''}>${esc(a.nom||a.email)}</option>`).join('')}</select>`;
+else if(t=='textarea')i=`<textarea id="f_${k}" rows="3">${esc(v)}</textarea>`;else i=`<input id="f_${k}" type="${t}" value="${t=='password'?'':esc(v)}">`;
+return`<label>${l}${x==1?' *':''}${i}</label>`}).join('')+`</div><div class="ra"><button class="b2" onclick="${pre.patientId?`dossier('${pre.patientId}')`:'closeM()'}">Annuler</button><button onclick="saveF('${c}','${r.id||''}','${pre.patientId||''}')">Enregistrer</button></div>`)}
+function saveF(c,id,pid){if(deny(c))return;const old=id?rows(c).find(x=>x.id==id):{},r={...old};for(const[k,l,t,x]of COLS[c].f){let v=$('#f_'+k).value.trim();if(x==1&&!v)return toast(l+' obligatoire');if(t=='number')v=Number(v)||0;if(t=='password'){if(!v)continue;v=btoa(v)}r[k]=v}
+put(c,r);pid?dossier(pid):(closeM(),render())}
+const edit=(c,id)=>openForm(c,rows(c).find(x=>x.id==id),{patientId:CUR||''});
+function arch(c,id,undo){if(deny(c))return;const r=rows(c).find(x=>x.id==id);r.arch=!undo;put(c,r);CUR?dossier(CUR):render()}
+function del(c,id){if(deny(c))return;if(!confirm('Supprimer définitivement ?'))return;const r=rows(c).find(x=>x.id==id);r.deleted=true;put(c,r);render()}
+/* ---- views ---- */
+function table(c,list){const ro=deny(c),D=COLS[c],fs=D.show.map(k=>D.f.find(f=>f[0]==k));return`<div class="w"><table><tr>${fs.map(f=>`<th>${f[1]}</th>`).join('')}<th></th></tr>${list.map(r=>`<tr>${fs.map(f=>`<td>${cell(c,f,r)}</td>`).join('')}<td>${c=='patients'?`<a class="l" onclick="dossier('${r.id}')">📁 Dossier</a>`:''}${ro?'':`<a class="l" onclick="edit('${c}','${r.id}')">✎</a><a class="l" onclick="arch('${c}','${r.id}')">🗄</a>`}</td></tr>`).join('')||'<tr><td class="m">Aucun enregistrement</td></tr>'}</table></div>`}
+function list(c){let l=dfilt(c,act(c));const L0=l;if(Q)l=l.filter(r=>JSON.stringify(Object.values(r)).toLowerCase().includes(Q));if(c=='rdv'||c=='compta')l.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+let x='';if(c=='compta'){const e=L0.filter(r=>r.type=='Entrée').reduce((s,r)=>s+r.montant,0),o=L0.filter(r=>r.type=='Sortie').reduce((s,r)=>s+r.montant,0);x=`<div class="st"><div class="card">Entrées<h2>${M(e)}</h2></div><div class="card">Sorties<h2>${M(o)}</h2></div><div class="card">Solde<h2>${M(e-o)}</h2></div></div>`}
+return x+fbar(c)+`<div class="tb"><input id="qs" placeholder="🔍 Rechercher…" value="${esc(Q)}" oninput="Q=this.value.toLowerCase();render(1)">${deny(c)?'<span class="m">Lecture seule (admin et comptable peuvent modifier)</span>':`<button onclick="openForm('${c}')">+ Nouveau</button>`}<button class="b2" onclick="csv('${c}')">⬇ CSV</button></div><div class="card">${table(c,l)}</div>`}
+function dossier(id){const p=rows('patients').find(x=>x.id==id);CUR=id;
+const ln={rdv:x=>`${esc((x.date||'').replace('T',' '))} · ${esc(nm('docteurs',x.docteurId))} · ${esc(x.motif)} [${x.statut}]`,suivis:x=>`${esc(x.date)} — ${esc(x.note)}`,traitements:x=>`<b>${esc(x.medicament)}</b> ${esc(x.posologie)} (${esc(x.debut)} → ${esc(x.fin)})`};
+const sec=(c,t)=>`<h4>${t} <button class="sm" onclick="openForm('${c}',{},{patientId:'${id}'})">+ Ajouter</button></h4>`+(act(c).filter(x=>x.patientId==id).map(x=>`<div class="it"><span>${ln[c](x)}</span><span><a class="l" onclick="edit('${c}','${x.id}')">✎</a><a class="l" onclick="arch('${c}','${x.id}')">🗄</a></span></div>`).join('')||'<p class="m">Aucun</p>');
+modal(`<h3>📁 ${esc(p.nom)}</h3><p class="m">${esc(p.sexe)} · né(e) le ${esc(p.naissance)||'—'} · ${esc(p.tel)} · Groupe ${esc(p.groupe)||'—'}<br>${esc(p.adresse)}<br>${esc(p.notes)}</p>${sec('rdv','Rendez-vous')}${sec('suivis','Suivis')}${sec('traitements','Traitements')}<div class="ra"><button class="b2" onclick="printDossier('${id}')">🖨 Imprimer</button><button onclick="closeM();render()">Fermer</button></div>`)}
+function pr(h){$('#pr').innerHTML=h+(SET.foot?`<p style="text-align:center">${esc(SET.foot)}</p>`:'')+`<hr><p style="text-align:center;font-size:12px">Build by KonbitTech</p>`;print()}
+const hd=()=>`<div style="display:flex;gap:12px;align-items:center;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:10px">${SET.logo?`<img src="${SET.logo}" style="height:60px">`:''}<div><h2 style="margin:0">${esc(SET.legal||SET.name)}</h2>${SET.slogan?`<i>${esc(SET.slogan)}</i><br>`:''}${[SET.addr,SET.city].filter(Boolean).map(esc).join(', ')}<br>${[SET.tel,SET.tel2].filter(Boolean).map(esc).join(' / ')} ${esc(SET.email)} ${esc(SET.web)}<br>${SET.nif?'NIF : '+esc(SET.nif)+' ':''}${SET.lic?'Agrément : '+esc(SET.lic):''}</div></div>`;
+function printDossier(id){const p=rows('patients').find(x=>x.id==id),f=c=>act(c).filter(x=>x.patientId==id);pr(hd()+`<h3>Dossier : ${esc(p.nom)}</h3><p>${esc(p.sexe)} · ${esc(p.naissance)} · ${esc(p.tel)} · ${esc(p.groupe)}<br>${esc(p.notes)}</p><h4>Rendez-vous</h4>`+f('rdv').map(x=>`<p>${esc(x.date)} ${esc(x.motif)} [${x.statut}]</p>`).join('')+'<h4>Suivis</h4>'+f('suivis').map(x=>`<p>${esc(x.date)} — ${esc(x.note)}</p>`).join('')+'<h4>Traitements</h4>'+f('traitements').map(x=>`<p>${esc(x.medicament)} ${esc(x.posologie)} (${esc(x.debut)}→${esc(x.fin)})</p>`).join(''))}
+/* reçus */
+function recus(){const l=dfilt('recus',act('recus')).sort((a,b)=>b.date.localeCompare(a.date));return fbar('recus')+`<div class="tb"><button onclick="newRecu()">+ Nouveau reçu</button><button class="b2" onclick="csv('recus')">⬇ CSV</button><b style="align-self:center">Total : ${M(l.reduce((s,r)=>s+r.total,0))}</b></div><div class="card w"><table><tr><th>N°</th><th>Date</th><th>Patient</th><th>Total</th><th>Mode</th><th></th></tr>${l.map(r=>`<tr><td>${r.num}</td><td>${r.date}</td><td>${esc(nm('patients',r.patientId))}</td><td>${M(r.total)}</td><td>${esc(r.mode)}</td><td><a class="l" onclick="printRecu('${r.id}')">🖨</a><a class="l" onclick="arch('recus','${r.id}')">🗄</a></td></tr>`).join('')||'<tr><td class="m">Aucun reçu</td></tr>'}</table></div>`}
+function newRecu(){modal(`<h3>Nouveau reçu</h3><label>Patient<select id="rp">${act('patients').map(p=>`<option value="${p.id}">${esc(p.nom)}</option>`).join('')}</select></label><div id="rl"></div><button class="b2 sm" onclick="addL()">+ Ligne</button><div class="g"><label>Paiement<select id="rm"><option>Cash</option><option>MonCash</option><option>NatCash</option><option>Carte</option><option>Assurance</option></select></label></div><h3 id="rt">Total : ${M(0)}</h3><div class="ra"><button class="b2" onclick="closeM()">Annuler</button><button onclick="saveRecu()">Enregistrer</button></div>`);addL()}
+function addL(){const d=document.createElement('div');d.className='g';d.style.marginTop='8px';d.innerHTML=`<select onchange="calc()">${act('services').map(s=>`<option value="${s.id}" data-p="${s.prix}">${esc(s.nom)} — ${M(s.prix)}</option>`).join('')}</select><input type="number" min="1" value="1" oninput="calc()">`;$('#rl').append(d);calc()}
+function lines(){return[...$('#rl').children].map(d=>{const o=d.querySelector('select').selectedOptions[0];if(!o)return null;const s=rows('services').find(x=>x.id==o.value);return{nom:s.nom,prix:s.prix,qty:Number(d.querySelector('input').value)||1}}).filter(Boolean)}
+function calc(){$('#rt').textContent='Total : '+M(lines().reduce((s,l)=>s+l.prix*l.qty,0))}
+function saveRecu(){const ls=lines();if(!ls.length||!$('#rp').value)return toast('Patient et service requis');const total=ls.reduce((s,l)=>s+l.prix*l.qty,0),num='R-'+String(rows('recus').length+1).padStart(5,'0'),date=new Date().toISOString().slice(0,10);
+const r=put('recus',{num,date,patientId:$('#rp').value,lines:ls,total,mode:$('#rm').value});put('compta',{type:'Entrée',date,libelle:'Reçu '+num+' – '+nm('patients',r.patientId),montant:total});closeM();render();printRecu(r.id)}
+function printRecu(id){const r=rows('recus').find(x=>x.id==id);pr(hd()+`<h3>Reçu ${r.num}</h3><p>Date : ${r.date}<br>Patient : ${esc(nm('patients',r.patientId))}</p><table border="1" cellpadding="6" style="border-collapse:collapse"><tr><th>Service</th><th>Qté</th><th>PU</th><th>Total</th></tr>${r.lines.map(l=>`<tr><td>${esc(l.nom)}</td><td>${l.qty}</td><td>${M(l.prix)}</td><td>${M(l.prix*l.qty)}</td></tr>`).join('')}</table><h3>Total : ${M(r.total)}</h3><p>Paiement : ${esc(r.mode)}</p>`)}
+/* rapports, archives, params */
+function rapports(){const c=act('compta'),by={};c.forEach(r=>{const m=(r.date||'').slice(0,7);by[m]=by[m]||{e:0,o:0};r.type=='Entrée'?by[m].e+=r.montant:by[m].o+=r.montant});const mx=Math.max(1,...Object.values(by).map(x=>Math.max(x.e,x.o))),sv={};act('recus').forEach(r=>r.lines.forEach(l=>sv[l.nom]=(sv[l.nom]||0)+l.qty));
+return`<div class="st"><div class="card">Patients<h2>${act('patients').length}</h2></div><div class="card">Rendez-vous<h2>${act('rdv').length}</h2></div><div class="card">Reçus<h2>${act('recus').length}</h2></div></div><div class="card"><h3>Revenus / dépenses par mois</h3>${Object.keys(by).sort().map(m=>`<p>${m}<br><div class="bar" style="width:${by[m].e/mx*100}%"></div> ${M(by[m].e)}<div class="bar" style="width:${by[m].o/mx*100}%;background:var(--dg)"></div> ${M(by[m].o)}</p>`).join('')||'<p class="m">Pas de données</p>'}</div><div class="card"><h3>Services les plus vendus</h3>${Object.entries(sv).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="it"><span>${esc(k)}</span><b>${v}</b></div>`).join('')||'<p class="m">—</p>'}</div><button onclick="print2()">🖨 Imprimer</button>`}
+const print2=()=>pr(hd()+$('main').innerHTML);
+function archives(){const a=[];Object.keys(COLS).forEach(c=>dfilt('archives',rows(c).filter(r=>r.arch)).forEach(r=>a.push([c,r])));return fbar('archives')+`<div class="card w"><table><tr><th>Type</th><th>Élément</th><th></th></tr>${a.map(([c,r])=>`<tr><td>${COLS[c].t}</td><td>${esc(r.nom||r.libelle||r.num||r.medicament||r.date||r.email)}</td><td><a class="l" onclick="arch('${c}','${r.id}',1)">↩ Restaurer</a><a class="l" onclick="del('${c}','${r.id}')">🗑</a></td></tr>`).join('')||'<tr><td class="m">Archive vide</td></tr>'}</table></div>`}
+function params(){return`<div class="card"><h3>Informations de l'entreprise</h3><div class="g">${SF.map(([k,l])=>`<label>${l}<input id="s_${k}" value="${esc(SET[k])}"></label>`).join('')}</div><div style="margin-top:10px">${SET.logo?`<img src="${SET.logo}" style="height:50px;vertical-align:middle"> <button class="sm dg" onclick="noLogo()">Retirer</button>`:''} <label>Logo (image)<input type="file" accept="image/*" onchange="logoUp(this.files[0])"></label></div><p class="m">Ces infos apparaissent sur les reçus et impressions. La mention « Build by KonbitTech » reste toujours affichée.</p></div>
+<div class="card"><h3>Firebase (Auth + Firestore, sync auto)</h3><label>Config JSON (Firebase console → Paramètres du projet)<textarea id="s5" rows="5" placeholder='{"apiKey":"…","authDomain":"…","projectId":"…","appId":"…"}'>${esc(SET.fb)}</textarea></label><p class="m">Statut : ${fb?'🟢 connecté':'⚪ mode local'} · en attente de sync : ${DIRTY.length}</p></div>
+<div class="tb"><button onclick="saveS()">Enregistrer</button><button class="b2" onclick="theme()">🌓 Thème</button><button class="b2" onclick="bk()">⬇ Sauvegarde JSON</button><button class="b2" onclick="$('#imp').click()">⬆ Restaurer</button><input id="imp" type="file" accept=".json" hidden onchange="rs(this.files[0])"></div>`}
+const SF=[['name','Nom du logiciel'],['legal','Raison sociale / nom officiel'],['slogan','Slogan'],['addr','Adresse'],['city','Ville / Pays'],['tel','Téléphone'],['tel2','Téléphone 2 / WhatsApp'],['email','Email'],['web','Site web'],['nif','NIF / Patente'],['lic','Agrément / Licence (MSPP)'],['foot','Message bas de reçu'],['cur','Devise']];
+function coRead(){SF.forEach(([k])=>{const e=$('#s_'+k);if(e)SET[k]=e.value.trim()});SET.name=SET.name||'AW-Med';SET.cur=SET.cur||'HTG'}
+function saveCo(){S('kt_set',SET);const co={...SET};delete co.fb;put('settings',{id:'main',co})}
+function saveS(){coRead();SET.fb=$('#s5').value.trim();saveCo();if(SET.fb&&!fb)initFb();toast('Paramètres enregistrés');render()}
+function logoUp(f){if(!f)return;coRead();const im=new Image();im.onload=()=>{const k=Math.min(1,240/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);SET.logo=c.toDataURL('image/png');saveCo();render()};im.src=URL.createObjectURL(f)}
+function noLogo(){coRead();SET.logo='';saveCo();render()}
+function applySet(){const r=(DB.settings||[]).find(x=>x.id=='main');if(r&&r.co)SET={...SET,...r.co,fb:SET.fb}}
+function theme(){const r=document.documentElement,d=r.dataset.theme=='dark';r.dataset.theme=d?'light':'dark';S('kt_th',r.dataset.theme)}
+function dl(n,t,m){try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:m}));a.download=n;a.click()}catch(e){toast('Téléchargement indisponible ici')}}
+const bk=()=>dl('clinique-backup.json',JSON.stringify(DB),'application/json');
+function rs(f){f&&f.text().then(t=>{try{DB=JSON.parse(t);S('kt_db',DB);Object.keys(DB).forEach(c=>DB[c].forEach(r=>q(c,r.id)));flush();render();toast('Restauré')}catch(e){toast('Fichier invalide')}})}
+function csv(c){const D=COLS[c],fs=c=='recus'?[['num','N°'],['date','Date'],['total','Total'],['mode','Mode']]:D.f.filter(f=>f[2]!='password'),h=fs.map(f=>f[1]);dl(c+'.csv','\ufeff'+[h,...dfilt(c,act(c)).map(r=>fs.map(f=>{let v=r[f[0]];if(f[2]&&f[2].startsWith&&f[2].startsWith('ref:'))v=nm(f[2].slice(4),v);return'"'+String(v??'').replace(/"/g,'""')+'"'}))].map(r=>r.join(',')).join('\n'),'text/csv')}
+function dash(){const t=new Date().toISOString().slice(0,10),e=act('compta').filter(r=>r.type=='Entrée'&&r.date.slice(0,7)==t.slice(0,7)).reduce((s,r)=>s+r.montant,0),up=act('rdv').filter(r=>(r.date||'')>=t&&r.statut!='Annulé').sort((a,b)=>a.date.localeCompare(b.date)).slice(0,8);
+return`<div class="st"><div class="card">Patients<h2>${act('patients').length}</h2></div><div class="card">RDV aujourd'hui<h2>${act('rdv').filter(r=>(r.date||'').slice(0,10)==t).length}</h2></div><div class="card">Docteurs<h2>${act('docteurs').length}</h2></div><div class="card">Revenus du mois<h2>${M(e)}</h2></div></div><div class="card"><h3>Prochains rendez-vous</h3>${up.map(r=>`<div class="it"><span>${esc(r.date.replace('T',' '))} · ${esc(nm('patients',r.patientId))}</span><span class="m">${esc(nm('docteurs',r.docteurId))}</span></div>`).join('')||'<p class="m">Aucun</p>'}</div>`}
+/* render */
+function render(keep){applySet();const a=$('#app');if(!ME){a.innerHTML=`<div id="lg" class="card"><h2>🏥 ${esc(SET.name)}</h2><p class="m">${fb?'Connexion Firebase':'Mode local hors-ligne'}</p><input id="le" type="email" placeholder="Email"><input id="lp" type="password" placeholder="Mot de passe"><button onclick="login()">Connexion</button> <button class="b2" onclick="login(1)">Créer un compte</button></div>`;return}
+const ok=ACC[ME.role]=='*'?NAV:NAV.filter(n=>ACC[ME.role].includes(n[0]));if(!ok.some(n=>n[0]==V))V='dash';
+const body={dash,rapports,archives,params,recus}[V]?.()??list(V);const fo=keep&&document.activeElement.tagName=='INPUT';
+a.innerHTML=`<div id="top"><header><b>${SET.logo?`<img src="${SET.logo}" style="height:26px;vertical-align:middle;border-radius:4px">`:'🏥'} ${esc(SET.name)}</b><span>${esc(ME.email)} <button class="sm b2" onclick="logout()">Quitter</button></span></header><nav>${ok.map(n=>`<a class="${n[0]==V?'on':''}" onclick="V='${n[0]}';Q='';render()">${n[1]} ${n[2]}</a>`).join('')}</nav></div><main>${body}</main>`;
+const on=$('nav a.on');on&&on.scrollIntoView({inline:'center',block:'nearest'});if(fo){const i=$('#qs');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}}
+const th=L('kt_th',null);if(th)document.documentElement.dataset.theme=th;
+initFb();render();
+try{navigator.serviceWorker&&navigator.serviceWorker.register('sw.js').catch(()=>{})}catch(e){}
+</script></body></html>
