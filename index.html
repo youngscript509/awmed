@@ -50,16 +50,8 @@ a.l{color:var(--pr);cursor:pointer;margin-right:8px}.m{color:var(--mu)}.it{displ
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-firestore-compat.js"></script>
 <script>
 /* ====== CONFIG FIREBASE : collez ici les valeurs de la console Firebase (Paramètres du projet → Vos applications → Web) ====== */
-const FB_CFG={
-  apiKey: "AIzaSyDRdRUYMWq82DfGw8iaY09yOTXNA14qCeI",
-  authDomain: "awmed-b5a4a.firebaseapp.com",
-  projectId: "awmed-b5a4a",
-  storageBucket: "awmed-b5a4a.firebasestorage.app",
-  messagingSenderId: "812291965061",
-  appId: "1:812291965061:web:0ec49fa9c9db89811f69ec",
-  measurementId: "G-6R6G2NK028"
-             };
-let DP=null,REG=null;const APP_VER='1.4.1';
+const FB_CFG={apiKey:'',authDomain:'',projectId:'',storageBucket:'',messagingSenderId:'',appId:''};
+let DP=null,REG=null;const APP_VER='1.4.2';
 const isStd=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone,isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();DP=e;refreshInst()});
 addEventListener('appinstalled',()=>{DP=null;refreshInst();toast('Application installée ✅')});
@@ -101,16 +93,22 @@ const deny=c=>ME&&((c=='plans'&&!canPlan())||(c=='services'&&!['Admin','Comptabl
 const toast=m=>{const t=$('#tt');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',3000)};
 /* ---- data + sync ---- */
 function put(c,r){if(!r.id)r.cr=Date.now();r.id=r.id||uid();r.u=Date.now();const a=DB[c]=DB[c]||[],i=a.findIndex(x=>x.id==r.id);i<0?a.push(r):a[i]=r;S('kt_db',DB);push(c,r);return r}
-function push(c,r){if(fb&&navigator.onLine)fb.db.collection('kt_'+c).doc(r.id).set(r).catch(()=>q(c,r.id));else q(c,r.id)}
+function push(c,r){if(fb&&fb.user&&navigator.onLine)fb.db.collection('kt_'+c).doc(r.id).set(r).catch(()=>q(c,r.id));else q(c,r.id)}
 function q(c,id){if(!DIRTY.some(d=>d[0]==c&&d[1]==id)){DIRTY.push([c,id]);S('kt_dirty',DIRTY)}}
-function flush(){if(!fb||!navigator.onLine)return;const d=DIRTY;DIRTY=[];S('kt_dirty',[]);d.forEach(([c,id])=>{const r=(DB[c]||[]).find(x=>x.id==id);r&&push(c,r)})}
-function initFb(){try{const raw=SET.fb||(FB_CFG.apiKey&&FB_CFG.projectId?JSON.stringify(FB_CFG):'');if(!raw||!window.firebase)return;const cfg=JSON.parse(raw);firebase.apps.length||firebase.initializeApp(cfg);const db=firebase.firestore();db.enablePersistence({synchronizeTabs:true}).catch(()=>{});fb={db,auth:firebase.auth()};
-Object.keys(COLS).forEach(c=>db.collection('kt_'+c).onSnapshot(s=>{let ch=0;s.forEach(d=>{const r=d.data(),a=DB[c]=DB[c]||[],i=a.findIndex(x=>x.id==r.id);if(i<0){a.push(r);ch++}else if((r.u||0)>(a[i].u||0)){a[i]=r;ch++}});if(ch){S('kt_db',DB);ME&&render()}}));
-addEventListener('online',flush);flush()}catch(e){fb=null;toast('Config Firebase invalide')}}
+function flush(){if(!fb||!fb.user||!navigator.onLine)return;const d=DIRTY;DIRTY=[];S('kt_dirty',[]);d.forEach(([c,id])=>{const r=(DB[c]||[]).find(x=>x.id==id);r&&push(c,r)})}
+function mergeSnap(c,s){let ch=0;s.forEach(d=>{const r=d.data(),a=DB[c]=DB[c]||[],i=a.findIndex(x=>x.id==r.id);if(i<0){a.push(r);ch++}else if((r.u||0)>(a[i].u||0)){a[i]=r;ch++}});if(ch)S('kt_db',DB);return ch}
+/* Firebase : la synchro démarre seulement une fois connecté (les règles exigent request.auth) */
+function startSync(){if(!fb||fb.sync||!fb.user)return;fb.sync=1;
+Object.keys(COLS).forEach(c=>fb.db.collection('kt_'+c).onSnapshot(s=>{if(mergeSnap(c,s)&&ME)render()},e=>{fb.sync=0;toast('Synchronisation refusée : '+e.code)}));
+// envoie vers le cloud ce qui a été saisi hors-ligne ou avant la connexion
+Object.keys(DB).forEach(c=>(DB[c]||[]).forEach(r=>{if(r.u>(+localStorage.getItem('kt_lastsync')||0))q(c,r.id)}));localStorage.setItem('kt_lastsync',Date.now());flush()}
+function initFb(){try{const raw=SET.fb||(FB_CFG.apiKey&&FB_CFG.projectId?JSON.stringify(FB_CFG):'');if(!raw||!window.firebase)return;const cfg=JSON.parse(raw);firebase.apps.length||firebase.initializeApp(cfg);const db=firebase.firestore();db.enablePersistence({synchronizeTabs:true}).catch(()=>{});fb={db,auth:firebase.auth(),user:null,sync:0};
+fb.auth.onAuthStateChanged(u=>{fb.user=u;if(u)startSync();else if(ME){ME=null;S('kt_me',null);render()}});
+addEventListener('online',flush)}catch(e){fb=null;toast('Config Firebase invalide')}}
 /* ---- auth ---- */
 async function login(reg){const e=$('#le').value.trim().toLowerCase(),p=$('#lp').value;if(!e||!p)return toast('Email et mot de passe requis');
 try{let us=rows('users');
-if(fb){reg?await fb.auth.createUserWithEmailAndPassword(e,p):await fb.auth.signInWithEmailAndPassword(e,p)}
+if(fb){reg?await fb.auth.createUserWithEmailAndPassword(e,p):await fb.auth.signInWithEmailAndPassword(e,p);fb.user=fb.auth.currentUser;try{mergeSnap('users',await fb.db.collection('kt_users').get({source:'server'}))}catch(_){}startSync()}
 else if(reg){if(us.length)return toast("Création réservée à l'admin");put('users',{email:e,nom:e,role:'Admin',pw:btoa(p)})}
 else if(!us.find(x=>x.email==e&&x.pw==btoa(p)))return toast('Identifiants incorrects');
 us=rows('users');let u=us.find(x=>x.email==e);if(!u&&!us.length)u=put('users',{email:e,nom:e,role:'Admin'});
