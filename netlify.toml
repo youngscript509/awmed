@@ -1,5 +1,11 @@
 [build]
   publish = "."
+
+# The Firebase web config apiKey in index.html is a public client identifier
+# (secured via Firebase Security Rules / API key restrictions), not a secret.
+[build.environment]
+  SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "AIzaSyDRdRUYMWq82DfGw8iaY09yOTXNA14qCeI"
+
 [[headers]]
   for = "/sw.js"
   [headers.values]
