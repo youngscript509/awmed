@@ -1,5 +1,10 @@
 [build]
   publish = "."
+
+# The Firebase web "apiKey" in index.html is a public client identifier, not a secret
+# (access is enforced by Firebase Auth + firestore.rules). Exclude it from smart detection.
+[build.environment]
+  SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "AIzaSyDRdRUYMWq82DfGw8iaY09yOTXNA14qCeI"
 [[headers]]
   for = "/sw.js"
   [headers.values]
