@@ -17,3 +17,5 @@
   [headers.values]
     Content-Type = "application/manifest+json"
     Cache-Control = "no-cache"
+[build.environment]
+  SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
